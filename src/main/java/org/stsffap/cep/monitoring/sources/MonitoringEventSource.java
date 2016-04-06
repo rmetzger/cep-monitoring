@@ -20,6 +20,7 @@ package org.stsffap.cep.monitoring.sources;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
+import org.apache.flink.util.XORShiftRandom;
 import org.stsffap.cep.monitoring.events.MonitoringEvent;
 import org.stsffap.cep.monitoring.events.PowerEvent;
 import org.stsffap.cep.monitoring.events.TemperatureEvent;
@@ -75,7 +76,7 @@ public class MonitoringEventSource extends RichParallelSourceFunction<Monitoring
         offset = (int)((double)maxRackId / numberTasks * index);
         shard = (int)((double)maxRackId / numberTasks * (index + 1)) - offset;
 
-        random = new Random();
+        random = new XORShiftRandom();
     }
 
     public void run(SourceContext<MonitoringEvent> sourceContext) throws Exception {
@@ -94,8 +95,9 @@ public class MonitoringEventSource extends RichParallelSourceFunction<Monitoring
 
 
             sourceContext.collect(monitoringEvent);
-
-            Thread.sleep(pause);
+            if(pause > 0) {
+                Thread.sleep(pause);
+            }
         }
     }
 

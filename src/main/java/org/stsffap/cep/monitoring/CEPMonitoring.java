@@ -32,6 +32,7 @@ import org.stsffap.cep.monitoring.events.MonitoringEvent;
 import org.stsffap.cep.monitoring.events.TemperatureEvent;
 import org.stsffap.cep.monitoring.events.TemperatureAlert;
 import org.stsffap.cep.monitoring.events.TemperatureWarning;
+import org.stsffap.cep.monitoring.utils.ThroughputLogger;
 
 import java.util.Map;
 
@@ -50,7 +51,7 @@ public class CEPMonitoring {
     private static final double TEMPERATURE_THRESHOLD = 100;
 
     private static final int MAX_RACK_ID = 10;
-    private static final long PAUSE = 100;
+    private static final long PAUSE = 0;
     private static final double TEMPERATURE_RATIO = 0.5;
     private static final double POWER_STD = 10;
     private static final double POWER_MEAN = 100;
@@ -63,6 +64,7 @@ public class CEPMonitoring {
 
         // Use ingestion time => TimeCharacteristic == EventTime + IngestionTimeExtractor
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        env.setParallelism(1);
 
         // Input stream of monitoring events
         DataStream<MonitoringEvent> inputEventStream = env
@@ -75,6 +77,8 @@ public class CEPMonitoring {
                         TEMP_STD,
                         TEMP_MEAN))
                 .assignTimestampsAndWatermarks(new IngestionTimeExtractor<>());
+
+        inputEventStream.flatMap(new ThroughputLogger<>(10, 500_000L)).setParallelism(1);
 
         // Warning pattern: Two consecutive temperature events whose temperature is higher than the given threshold
         // appearing within a time interval of 10 seconds
@@ -124,8 +128,9 @@ public class CEPMonitoring {
             });
 
         // Print the warning and alert events to stdout
-        warnings.print();
-        alerts.print();
+
+        //warnings.print();
+        //alerts.print();
 
         env.execute("CEP monitoring job");
     }
